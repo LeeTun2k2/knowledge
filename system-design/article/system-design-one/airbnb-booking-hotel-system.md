@@ -4,6 +4,20 @@ tags:
   - system-design
   - api-design
 ---
+## Key Ideas
+
+Prevent **Double Booking** -> use ACID in SQL PostgreSQL, keep data in 1 table, 1 db to keep simple flow.
+
+Read heavy (by client search) 
+=> Focus on indexing & caching & master slave.
+=> use search service (Elasticsearch) to reduce read heavy.
+
+DDD => split backend to microservice => reduce dependency & simplize logic
+
+Flow:
+- Clarify requirement -> scale, functions -> non functions -> TPS,QPS -> high level design -> api design
+- 
+
 ## Problem
 
 Two users click “Book” on the last available room in the same second. Your API does a `SELECT` check, so both requests see availability, and you charge two credit cards for one room. Next, you’re dealing with refunds, angry customers, and a system that can’t be trusted.
@@ -313,3 +327,6 @@ This `reservationId` is generated on the frontend and prevents double bookings w
 APIs define behavior, but the data model determines whether the system can enforce correctness.
 
 Let’s keep going!
+
+## Related
+[[idempotency]]
