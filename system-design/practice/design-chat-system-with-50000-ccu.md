@@ -67,3 +67,65 @@ Q: Làm sao đảm bảo thứ tự message
 -> Middleware tại BE để assign created date.
 -> Id tự tăng -> Snowflake ID
 
+Q: Làm sao xử lý trạng thái tin nhắn (Sent, Delivery, Receive, Read)?
+Trong 1 group chat, chỉ track status của tin nhắn latest.
+
+Q: Làm sao để track message trong group đã có những ai đọc rồi?
+Chấp nhận độ trễ, client gom message theo batch để gửi request update status. Message được đưa vào batch và update từ từ vào database. 
+User muốn xem ai đã đọc thì call api, với interval thấp.
+
+Q: Nếu user cần gửi hình ảnh hoặc video thì sao?
+1. **Client-Side:** Thay vì gửi byte qua WebSocket, Client gọi một **REST API** (POST `/media/upload`).
+2. **Media Service:** Service này nhận file, thực hiện các tác vụ như:
+    - **Validation:** Kiểm tra loại file, kích thước.
+    - **Processing:** Tạo ảnh thu nhỏ (Thumbnail), nén ảnh để tiết kiệm băng thông.
+    - **Storage:** Đẩy file gốc và thumbnail lên **Object Storage** (S3/GCS/MinIO).
+3. **URL Metadata:** Media Service trả về một `media_id` hoặc một `signed_url`.
+4. **Message Delivery:** Client sau đó mới gửi một tin nhắn văn bản qua **WebSocket** có nội dung chứa cái URL đó.
+
+Q: Nếu upload file nặng, client và media service phải treo connection để handle thì tốn resource. Có cách nào tối ưu?
+Trả pre-sign url => Khi media service nhận được request, lập tức tạo 1 valid url sau đó trả lại cho client và chuyển upload connection cho worker để chuyển tiếp đến object storage.
+
+## API Design
+
+##### Auth and refresh token
+
+POST /api/v/auth/login
+POST /api/v/auth/refesh
+
+##### New chat
+POST /api/v/chat/new {list of userid}
+
+##### History
+GET /api/v/group/list : list of top private chat & group chat
+GET /api/v/group/{id}/messages: top k message from group
+
+
+## Database design
+
+##### SQL 
+
+Các thông tin quan trọng như User, Group phải lưu trong SQL để đảm bảo consistency.
+
+##### Column DB
+
+Các thông tin như chat lưu trong Cassandra để query range và write cho nhanh.
+
+##### Redis
+
+Để cache lại session, connection, bucket, ...
+
+
+## Scaling
+
+Q: Nếu từ 50k -> 1M CCU thì sao?
+
+Websocket chịu không nổi -> Cần LB để chia tải
+Redis chịu không nổi -> Redis cluster tại server, local cache tại client.
+
+Q: Hiện tại đang dùng api v1, nếu nâng lên api v2 thì sẽ lost toàn bộ connection. Vậy phải làm sao?
+Zero downtime blue green solution => Migrate từ từ từng node theo quy trình: Deploy version mới => Check ổn định => Down version cũ.
+Yêu cầu server cũ delay khi tắt khoảng 30 phút để xử lý các message cũ, đến khi hết message thì mới tắt.
+Sử dụng LB để điều hướng connection từ v1 sang v2.
+Phía client phải có exponent backoff, nếu bị down do server upgrade thì phải retry với exponent time.
+Thiết kế client side message pool, lưu các tin nhắn gần đây và status đã gửi hay chưa. Nếu status chưa gửi (server chưa ACK) thì cần implement retry 
