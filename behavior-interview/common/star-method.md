@@ -50,4 +50,4 @@ STAR stands for Situation, Task, Action, and Result.
 - **Action:** "I quickly organized a meeting with the design and development teams to discuss the changes and their feasibility within the timeline..."
 - **Result:** "We successfully implemented the design changes without delaying the project, and the app received positive reviews from users."
 
-[[star-method]]
+[[behavior-interview-fundaments]]

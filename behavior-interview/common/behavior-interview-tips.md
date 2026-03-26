@@ -18,3 +18,5 @@ tags:
 **3. Interview Interaction**
 - Listen carefully. Ask clarifying questions or take a moment to think if needed.
 - Ask the interviewer thoughtful questions at the end.
+
+[[behavior-interview-fundaments]]
